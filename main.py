@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import time
+import random
 
 months = {
     1: 'January',
@@ -18,6 +20,10 @@ months = {
 }
 
 url = 'https://www.mtgtop8.com/'
+
+pd.options.display.max_columns = None
+pd.options.display.max_rows = None
+pd.options.display.width = 0
 
 
 def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
@@ -46,6 +52,7 @@ def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
         raise Exception('Format not on the list of formats: ', mtg_format)
 
     full_url = url + format_url
+    time.sleep(random.randint(0, 3))
     page = requests.get(full_url)  # get the page
     soup = BeautifulSoup(page.content, "html.parser")  # get only it's content
     d2b_element = soup.find(attrs={"name": "archive_d2b"})  # search for <eslect> tag
@@ -73,7 +80,7 @@ def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
     decks_to_beat_months['Link to month'] = month_link
     decks_to_beat_months['Link to month'] = url + decks_to_beat_months['Link to month']
     # decks_to_beat_months = decks_to_beat_months.iloc[::-1]  # reverse order of elements in DataFrame
-    print(decks_to_beat_months)
+    # print(decks_to_beat_months)
     return decks_to_beat_months
 
 
@@ -82,22 +89,47 @@ def get_deck_links(tier_list_url: str) -> pd.DataFrame:
     :param tier_list_url: string that is a link to a tier list
     :return: pd.DataFrame with links to all decks on that page
     """
+    time.sleep(random.randint(0, 3))
     page = requests.get(tier_list_url)  # get the page
     soup = BeautifulSoup(page.content, "html.parser")  # get only it's content
     # this is spaghetti but the website is also spaghetti
     searching_by_style = soup.find_all(style='margin:0px 4px 0px 4px;')
-    #print(searching_by_style)
+    decks = []
     for element in searching_by_style:  # it should be exactly 1 iteration any ways
-        asdjjj = element.find_all('tr')
-        # todo each <TR> is a tier on the tier list!
-        print(asdjjj)
-        # ahref = element.find_all('a')
-        # for element2 in ahref:
-        #     print(element2)
-    #asd = soup.find_all(attrs={'class': 'S14'})  # spaghetti but the website is also a pasta
-    #print(asd)
+        trs = element.find_all('tr')
+        for index, tr in enumerate(trs):
+            tier = index + 1
+            # print('Tier ' + str(tier))
+            aas = all_links = tr.find_all('a')  # Find all links
+            deck_name = ""
+            deck_link = ""
+            for index2, a in enumerate(aas):
+                # First link is a picture (ignore it), second is text, third is autor name
+                if index2 % 3 == 1:
+                    deck_name = a.contents[0]
+                    deck_link = a['href']
+                if index2 % 3 == 2:
+                    deck_author = a.contents[0]
+                    # print(tier, deck_name, deck_link, deck_author)
+                    full_deck_link = url + 'event' + deck_link
+                    decks.append([tier, deck_name, full_deck_link, deck_author])
+
+    decks_df = pd.DataFrame(decks, columns=['Tier', 'Name', 'Link', 'Author name'])
+    # print(decks_df)
+    return decks_df
 
 
-modern_tier_lists = get_tier_list_links('modern')
+format_to_scrape = 'modern'
+tier_lists = get_tier_list_links(format_to_scrape)
+for index, row in tier_lists.iterrows():
+    print("<<<", index, ">>>")
+    print(row['Month'], row['Year'])
+    print(row['Link to month'], "\n")
+    print(get_deck_links(row['Link to month']))
+    print("\n")
+
+    #tier_list_link = element.loc[:, 'Link to month']
+    #print(tier_list_link)
+
+
 get_deck_links('https://www.mtgtop8.com/event?e=2552&f=MO')
-# todo scrapping tier list
