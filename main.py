@@ -103,16 +103,31 @@ def get_deck_links(tier_list_url: str) -> pd.DataFrame:
             aas = all_links = tr.find_all('a')  # Find all links
             deck_name = ""
             deck_link = ""
-            for index2, a in enumerate(aas):
-                # First link is a picture (ignore it), second is text, third is autor name
-                if index2 % 3 == 1:
-                    deck_name = a.contents[0]
-                    deck_link = a['href']
-                if index2 % 3 == 2:
-                    deck_author = a.contents[0]
+            x = iter(aas)
+            if len(aas) % 3 != 0:
+                raise Exception("Number of links isn't devideable by zero (something went wrong!)")
+            for a_1, a_2, a_3 in zip(x, x, x):
+                try:
+                    deck_name = a_2.contents[0]
+                    deck_link = a_2['href']
+                    deck_author = a_3.contents[0]
                     # print(tier, deck_name, deck_link, deck_author)
                     full_deck_link = url + 'event' + deck_link
-                    decks.append([tier, deck_name, full_deck_link, deck_author])
+                    decks.append([tier, deck_name.strip(), full_deck_link, deck_author.strip()])
+                except IndexError:
+                    print('Likely no deck link and author, only picture!')
+                    print(a_1, a_2, a_3)
+
+            # for index2, a in enumerate(aas):
+            #     # First link is a picture (ignore it), second is text, third is autor name
+            #     if index2 % 3 == 1:
+            #         deck_name = a.contents[0]
+            #         deck_link = a['href']
+            #     if index2 % 3 == 2:
+            #         deck_author = a.contents[0]
+            #         # print(tier, deck_name, deck_link, deck_author)
+            #         full_deck_link = url + 'event' + deck_link
+            #         decks.append([tier, deck_name, full_deck_link, deck_author])
 
     decks_df = pd.DataFrame(decks, columns=['Tier', 'Name', 'Link', 'Author name'])
     # print(decks_df)
@@ -121,15 +136,10 @@ def get_deck_links(tier_list_url: str) -> pd.DataFrame:
 
 format_to_scrape = 'modern'
 tier_lists = get_tier_list_links(format_to_scrape)
+# tier_lists = tier_lists.iloc[::-1]
 for index, row in tier_lists.iterrows():
     print("<<<", index, ">>>")
     print(row['Month'], row['Year'])
     print(row['Link to month'], "\n")
     print(get_deck_links(row['Link to month']))
     print("\n")
-
-    #tier_list_link = element.loc[:, 'Link to month']
-    #print(tier_list_link)
-
-
-get_deck_links('https://www.mtgtop8.com/event?e=2552&f=MO')
