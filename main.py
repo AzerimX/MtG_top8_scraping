@@ -4,6 +4,15 @@ import pandas as pd
 import time
 import random
 
+supported_formats = {
+    'standard': 'format?f=ST',
+    'pioneer': 'format?f=PI',
+    'modern': 'format?f=MO',
+    'legacy': 'format?f=LE',
+    'historic': 'format?f=HI',
+    'vintage': 'format?f=VI'
+}
+
 months = {
     1: 'January',
     2: 'February',
@@ -29,25 +38,11 @@ pd.options.display.width = 0
 def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
     """
     Takes format name, return Pandas DataFrame with link to tier list for each month that is available on mtgtop8.com
-    Supported formats:
-    - Standard
-    - Pioneer
-    - Modern
-    - Legacy
-    - Historic
     """
 
-    formats = {
-        'standard': 'format?f=ST',
-        'pioneer': 'format?f=PI',
-        'modern': 'format?f=MO',
-        'legacy': 'format?f=LE',
-        'historic': 'format?f=HI'
-    }
-
     mtg_format = mtg_format.lower()  # make input lower case
-    if mtg_format in formats:
-        format_url = formats[mtg_format]
+    if mtg_format in supported_formats:
+        format_url = supported_formats[mtg_format]
     else:
         raise Exception('Format not on the list of formats: ', mtg_format)
 
@@ -84,9 +79,9 @@ def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
     return decks_to_beat_months
 
 
-def get_deck_links(tier_list_url: str) -> pd.DataFrame:
+def get_deck_links_month(tier_list_url: str) -> pd.DataFrame:
     """
-    :param tier_list_url: string that is a link to a tier list
+    :param str tier_list_url: string that is a link to a tier list
     :return: pd.DataFrame with links to all decks on that page
     """
     time.sleep(random.randint(0, 3))
@@ -129,17 +124,54 @@ def get_deck_links(tier_list_url: str) -> pd.DataFrame:
             #         full_deck_link = url + 'event' + deck_link
             #         decks.append([tier, deck_name, full_deck_link, deck_author])
 
-    decks_df = pd.DataFrame(decks, columns=['Tier', 'Name', 'Link', 'Author name'])
-    # print(decks_df)
+    decks_df = pd.DataFrame(decks, columns=['Tier', 'Name', 'Deck link', 'Author name'])
     return decks_df
 
 
+def get_deck_links_all(mtg_format: str) -> pd.DataFrame:
+    """
+    Get all decks from "decks to beat" for a given format.
+    :param str mtg_format: one of the supported formats
+    :return: pd.DataFrame with the month, tier, link to the deck and other data
+    """
+
+    mtg_format = mtg_format.lower()  # make input lower case
+    if mtg_format not in supported_formats:
+        raise Exception('Format not on the list of formats: ', mtg_format)
+
+    tier_lists = get_tier_list_links(mtg_format)
+    all_decks_from_format = pd.DataFrame(columns=
+                                         ['Year', 'Month', 'Tier', 'Name', 'Author name', 'Deck link'])
+    year = []
+    month = []
+    tier = []
+    name = []
+    author_name = []
+    deck_link = []
+    for index, row in tier_lists.iterrows():
+        deck_from_month = get_deck_links_month(row['Link to month'])
+        print('Adding', ': ', row['Month'], '.', row['Year'], sep='')
+        for index2, row2 in deck_from_month.iterrows():
+            year.append(row['Year'])
+            month.append(row['Month'])
+            tier.append(row2['Tier'])
+            name.append(row2['Name'])
+            author_name.append(row2['Author name'])
+            deck_link.append(row2['Deck link'])
+
+    all_decks_from_format['Year'] = year
+    all_decks_from_format['Month'] = month
+    all_decks_from_format['Tier'] = tier
+    all_decks_from_format['Name'] = name
+    all_decks_from_format['Author name'] = author_name
+    all_decks_from_format['Deck link'] = deck_link
+
+    return all_decks_from_format
+
+
+#def get_deck_list(deck_link: str) -> str:
+
 format_to_scrape = 'modern'
-tier_lists = get_tier_list_links(format_to_scrape)
-# tier_lists = tier_lists.iloc[::-1]
-for index, row in tier_lists.iterrows():
-    print("<<<", index, ">>>")
-    print(row['Month'], row['Year'])
-    print(row['Link to month'], "\n")
-    print(get_deck_links(row['Link to month']))
-    print("\n")
+print(get_deck_links_all(format_to_scrape))
+
+
