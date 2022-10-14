@@ -11,7 +11,8 @@ supported_formats = {
     'modern': 'format?f=MO',
     'legacy': 'format?f=LE',
     'historic': 'format?f=HI',
-    'vintage': 'format?f=VI'
+    'vintage': 'format?f=VI',  # low ammount of data
+    'pauper': 'format?f=PAU'  # literally 1 tier list, moatly for test purposes
 }
 
 months = {
@@ -179,14 +180,38 @@ def get_deck_list(deck_link: str) -> str:
     full_url = url + mtgo_url
     # print(full_url)
     time.sleep(random.randint(0, 3))
-    page = requests.get(full_url)  # get the *.txt file on the website
+    page = requests.get(full_url)  # get the *.txt file on the website containing deck list in MTGO format
     deck_list = page.text
     return deck_list
 
 
-print(get_deck_list('https://www.mtgtop8.com/event?e=38037&d=484549&f=MO'))
-format_to_scrape = 'vintage'
+def get_all_decklists(mtg_format: str) -> pd.DataFrame:
+    """
+    Given a format returns a DataFrame with information about all decks, including deck lists
+    :param str mtg_format: one of the supported formats
+    :return: pd.Dataframe with deck lists and other information
+    """
+
+    deck_strings = []
+    all_deck_lists = get_deck_links_all(mtg_format)
+    print("\nTotal decklists found:", len(all_deck_lists))
+    for index, row in all_deck_lists.iterrows():
+        deck_list = get_deck_list(row['Deck link'])  # get the decklist to string format from its web page
+        # noinspection PyTypeChecker
+        print("%s. Added deck list for %s (%s.%s)" % (str(index+1), row['Name'], row['Month'], row['Year']))
+        deck_strings.append(deck_list)
+
+    all_deck_lists['Deck list'] = deck_strings
+    print(all_deck_lists)
+
+    return all_deck_lists
+
+
+# get_deck_list('https://www.mtgtop8.com/event?e=38037&d=484549&f=MO')
+format_to_scrape = 'modern'
 # print(get_deck_links_all(format_to_scrape))
+df_to_save = get_all_decklists(format_to_scrape)
+df_to_save.to_csv(path_or_buf=str(format_to_scrape + " decks.csv"), index=False)
 
 
 
