@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import time
 import random
+import re
 
 supported_formats = {
     'standard': 'format?f=ST',
@@ -38,6 +39,8 @@ pd.options.display.width = 0
 def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
     """
     Takes format name, return Pandas DataFrame with link to tier list for each month that is available on mtgtop8.com
+    :param str mtg_format: one of the supported formats
+    :return: pd.DataDrame with links to each tier list
     """
 
     mtg_format = mtg_format.lower()  # make input lower case
@@ -81,6 +84,7 @@ def get_tier_list_links(mtg_format: str) -> pd.DataFrame:
 
 def get_deck_links_month(tier_list_url: str) -> pd.DataFrame:
     """
+    Given a URL for a tier list scrapes all deck links in that tier list
     :param str tier_list_url: string that is a link to a tier list
     :return: pd.DataFrame with links to all decks on that page
     """
@@ -112,17 +116,6 @@ def get_deck_links_month(tier_list_url: str) -> pd.DataFrame:
                 except IndexError:
                     print('Likely no deck link and author, only picture!')
                     print(a_1, a_2, a_3)
-
-            # for index2, a in enumerate(aas):
-            #     # First link is a picture (ignore it), second is text, third is autor name
-            #     if index2 % 3 == 1:
-            #         deck_name = a.contents[0]
-            #         deck_link = a['href']
-            #     if index2 % 3 == 2:
-            #         deck_author = a.contents[0]
-            #         # print(tier, deck_name, deck_link, deck_author)
-            #         full_deck_link = url + 'event' + deck_link
-            #         decks.append([tier, deck_name, full_deck_link, deck_author])
 
     decks_df = pd.DataFrame(decks, columns=['Tier', 'Name', 'Deck link', 'Author name'])
     return decks_df
@@ -169,9 +162,31 @@ def get_deck_links_all(mtg_format: str) -> pd.DataFrame:
     return all_decks_from_format
 
 
-#def get_deck_list(deck_link: str) -> str:
+def get_deck_list(deck_link: str) -> str:
+    """
+    Scrape deck list from provided deck link
+    :param str deck_link: deck link to mtgtop8.com
+    :return: deck list as string
+    """
 
-format_to_scrape = 'modern'
-print(get_deck_links_all(format_to_scrape))
+    time.sleep(random.randint(0, 3))
+    page = requests.get(deck_link)
+    soup = BeautifulSoup(page.content, "html.parser")  # get only it's content
+    found_element = soup.find_all('a', {'href': re.compile(r'mtgo')})
+    if len(found_element) != 1:
+        raise Exception('No MTGO deck link or other links containing string "mtgo"')
+    mtgo_url = found_element[0]['href']
+    full_url = url + mtgo_url
+    # print(full_url)
+    time.sleep(random.randint(0, 3))
+    page = requests.get(full_url)  # get the *.txt file on the website
+    deck_list = page.text
+    return deck_list
+
+
+print(get_deck_list('https://www.mtgtop8.com/event?e=38037&d=484549&f=MO'))
+format_to_scrape = 'vintage'
+# print(get_deck_links_all(format_to_scrape))
+
 
 
